@@ -1,6 +1,10 @@
 package br.unicamp.cst.cli.data;
 
-import static br.unicamp.cst.cli.commands.CSTInit.PARSER_ERROR;
+import org.yaml.snakeyaml.error.YAMLException;
+import org.yaml.snakeyaml.parser.ParserException;
+
+import java.text.ParseException;
+
 
 public class MemoryConfig {
     public static final String OBJECT_TYPE = "object";
@@ -33,14 +37,12 @@ public class MemoryConfig {
             if (OBJECT_TYPE.equals(type.toLowerCase()) || CONTAINER_TYPE.equals(type.toLowerCase())) {
                 this.type = type;
             } else {
-                System.out.println(PARSER_ERROR);
                 System.out.println("MEMORY[" + this.getName() + "]: Memory type should be 'object' or 'container'");
-                System.exit(1);
+                throw new YAMLException("MEMORY[" + this.getName() + "]: Memory type should be 'object' or 'container'");
             }
         } else {
-            System.out.println(PARSER_ERROR);
             System.out.println("MEMORY[" + this.getName() + "]: Memory type must be specified!");
-            System.exit(1);
+            throw new YAMLException("MEMORY[" + this.getName() + "]: Memory type must be specified!");
         }
     }
 

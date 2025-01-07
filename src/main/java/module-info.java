@@ -3,6 +3,7 @@ module br.unicamp.cst.cli {
     requires org.yaml.snakeyaml;
     requires java.logging;
     requires com.github.javaparser.core;
+    requires java.desktop;
 
     exports br.unicamp.cst.cli;
     opens br.unicamp.cst.cli to info.picocli;

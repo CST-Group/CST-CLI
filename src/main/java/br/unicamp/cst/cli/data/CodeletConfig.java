@@ -1,7 +1,17 @@
 package br.unicamp.cst.cli.data;
 
 import br.unicamp.cst.cli.util.TemplatesBundle;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.AssignExpr;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.observer.PropagatingAstObserver;
+import com.github.javaparser.ast.stmt.BlockStmt;
 
+import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +24,8 @@ public class CodeletConfig {
     private List<String> out = new ArrayList<>();
     private List<String> broadcast = new ArrayList<>();
 
-    public CodeletConfig(){}
+    public CodeletConfig() {
+    }
 
     public CodeletConfig(String codeletName) {
         this.setName(codeletName);
@@ -74,51 +85,52 @@ public class CodeletConfig {
     }
 
     public String generateCode(String rootPackage) {
-        String templateInstance = TemplatesBundle.getInstance().getTemplate("CodeletTemplate");
 
-        templateInstance = templateInstance.replace("{{rootPackage}}", rootPackage);
-        templateInstance = templateInstance.replace("{{type}}", this.getGroup().toLowerCase());
-        templateInstance = templateInstance.replace("{{codeletName}}", this.getName());
+        CompilationUnit compilationUnit = new CompilationUnit();
 
-        StringBuilder declarations = new StringBuilder();
-        StringBuilder inMemoriesInit = new StringBuilder();
-        StringBuilder outMemoriesInit = new StringBuilder();
+        compilationUnit.setPackageDeclaration(this.getPackage(rootPackage));
+        compilationUnit.addImport("br.unicamp.cst.core.entities.Codelet");
+        compilationUnit.addImport("br.unicamp.cst.core.entities.Memory");
 
-        for (String input : this.getIn()) {
-            declarations.append("\n")
-                    .append(TAB)
-                    .append("private Memory ")
-                    .append(input)
-                    .append(";");
-            inMemoriesInit.append("\n")
-                    .append(TAB)
-                    .append(TAB)
-                    .append(input)
-                    .append(" = getInput(\"")
-                    .append(input)
-                    .append("\");");
+        ClassOrInterfaceDeclaration codeletClass = compilationUnit.addClass(this.getName()).setPublic(true).addExtendedType("Codelet");
+
+        BlockStmt memoryAccessMethod = new BlockStmt();
+
+        for (String input : this.getIn()){
+            codeletClass.addPrivateField("Memory", input);
+            MethodCallExpr getInput = new MethodCallExpr("getInput", new StringLiteralExpr(input));
+            AssignExpr initMemory = new AssignExpr(new NameExpr(input), getInput, AssignExpr.Operator.ASSIGN);
+            memoryAccessMethod.addStatement(initMemory);
         }
-        for (String output : this.getOut()) {
-            // If memory was not already declare in the inputs do it now
-            if (!this.getIn().contains(output))
-                declarations.append("\n")
-                        .append(TAB)
-                        .append("private Memory ")
-                        .append(output)
-                        .append(";");
-            outMemoriesInit.append("\n")
-                    .append(TAB)
-                    .append(TAB)
-                    .append(output)
-                    .append(" = getOutput(\"")
-                    .append(output)
-                    .append("\");");
-        }
-        templateInstance = templateInstance.replace("{{memoriesDeclaration}}", declarations.toString());
-        templateInstance = templateInstance.replace("{{inputAccess}}", inMemoriesInit.toString());
-        templateInstance = templateInstance.replace("{{outputAccess}}", outMemoriesInit.toString());
 
-        return templateInstance;
+        for (String output : this.getOut()){
+            codeletClass.addPrivateField("Memory", output);
+            MethodCallExpr getOutput = new MethodCallExpr("getOutput", new StringLiteralExpr(output));
+            AssignExpr initMemory = new AssignExpr(new NameExpr(output), getOutput, AssignExpr.Operator.ASSIGN);
+            memoryAccessMethod.addStatement(initMemory);
+        }
+
+        for (String broadcast : this.getBroadcast()){
+            codeletClass.addPrivateField("Memory", broadcast);
+            MethodCallExpr getBroadcast = new MethodCallExpr("getOutput", new StringLiteralExpr(broadcast));
+            AssignExpr initMemory = new AssignExpr(new NameExpr(broadcast), getBroadcast, AssignExpr.Operator.ASSIGN);
+            memoryAccessMethod.addStatement(initMemory);
+        }
+
+        codeletClass.addMethod("accessMemoryObjects")
+                .setPublic(true)
+                .addAnnotation("Override")
+                .setBody(memoryAccessMethod);
+        codeletClass.addMethod("calculateActivation")
+                .setPublic(true)
+                .addAnnotation("Override")
+                .setBody(new BlockStmt());
+        codeletClass.addMethod("proc")
+                .setPublic(true)
+                .addAnnotation("Override")
+                .setBody(new BlockStmt());
+
+        return compilationUnit.toString();
     }
 
     @Override
@@ -132,7 +144,11 @@ public class CodeletConfig {
                 '}';
     }
 
-    public String getPackage() {
-        return ".codelets." + group.toLowerCase() + "." + name;
+    public String getClassImport(String rootPackage) {
+        return this.getPackage(rootPackage) + "." + name;
+    }
+
+    public String getPackage(String rootPackage) {
+        return rootPackage + ".codelets." + this.group.toLowerCase();
     }
 }

@@ -1,13 +1,15 @@
 plugins {
     id 'java'
     id 'application'
+    id 'jacoco'
     id 'org.beryx.jlink' version '3.0.1'
     id 'org.openjfx.javafxplugin' version '0.0.10'
+    id 'org.javamodularity.moduleplugin' version '1.8.15'
     id 'com.adarshr.test-logger' version '4.0.0'
 }
 
 group = 'br.unicamp.cst.cli'
-version = '0.1'
+version = '0.2'
 
 repositories {
     mavenCentral()
@@ -69,4 +71,16 @@ jlink {
         imageName = 'cst'
     }
     //launcher {jvmArgs = ['--add-opens cscli/br.unicamp.cst.commands=ALL-UNNAMED']}
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+jacocoTestReport {
+    reports {
+        xml.required = true
+        html.outputLocation = layout.buildDirectory.dir('test-coverage')
+        dependsOn test // tests are required to run before generating the report
+    }
 }
