@@ -14,7 +14,6 @@ import picocli.CommandLine;
         subcommands = {
             CSTInit.class,
             CSTSave.class,
-            CSTAdd.class,
             CSTRun.class,
         })
 public class Main implements Runnable {
