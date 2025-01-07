@@ -14,6 +14,6 @@ docker exec cst-package apt install rpm fakeroot binutils -y
 
 docker exec cst-package ./gradlew jpackage
 
-docker exec cst-package chown -R $(id -u):$(id -g) build/
+docker exec -w /app cst-package chown -R $(id -u):$(id -g) build/
 
 docker stop cst-package
