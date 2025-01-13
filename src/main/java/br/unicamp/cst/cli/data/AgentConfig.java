@@ -101,7 +101,7 @@ public class AgentConfig {
 
         //Memory Groups
         Iterator<String> uniqueMemoryGroups = getMemories().stream()
-                .map(MemoryConfig::getGroup).distinct().iterator();
+                .map(MemoryConfig::getGroup).distinct().filter(Objects::nonNull).iterator();
         first = true;
         while (uniqueMemoryGroups.hasNext()) {
             MethodCallExpr memoryGroupCall = new MethodCallExpr();
@@ -149,10 +149,12 @@ public class AgentConfig {
             }
             constructorBody.addStatement(initializeMemory);
             //Register memory to group
-            MethodCallExpr registerMemoryCall = new MethodCallExpr("registerMemory",
-                    new NameExpr(memoryVar),
-                    new StringLiteralExpr(memory.getGroup()));
-            constructorBody.addStatement(registerMemoryCall);
+            if (memory.getGroup() != null) {
+                MethodCallExpr registerMemoryCall = new MethodCallExpr("registerMemory",
+                        new NameExpr(memoryVar),
+                        new StringLiteralExpr(memory.getGroup()));
+                constructorBody.addStatement(registerMemoryCall);
+            }
         }
         //Jump line
         constructorBody.addStatement(new EmptyStmt());

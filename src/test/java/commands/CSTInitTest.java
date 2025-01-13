@@ -505,7 +505,7 @@ public class CSTInitTest {
                     broadcast: [MemThree]
                 memories:
                   - content: null
-                    group: test
+                    group:
                     name: MemOne
                     type: object
                   - content: null
