@@ -149,6 +149,6 @@ public class CodeletConfig {
     }
 
     public String getPackage(String rootPackage) {
-        return rootPackage + ".codelets." + this.group.toLowerCase();
+        return rootPackage + ".codelets" + (this.group == null ? "" : "." + this.group.toLowerCase());
     }
 }

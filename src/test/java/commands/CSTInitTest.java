@@ -489,8 +489,49 @@ public class CSTInitTest {
 
         exitCode = new CommandLine(new Main()).execute("init", "--overwrite", "--file", configFile.toString());
         assertNotEquals(0, exitCode);
+    }
 
+    @Test
+    public void testYAMLConfigWithCodeletNoGroup(){
+        // Create a mock YAML config file
+        String yamlConfig = """
+                projectName: MyProject
+                packageName: my.project
+                codelets:
+                  - name: TestCodelet
+                    group:
+                    in: [MemOne]
+                    out: [MemTwo]
+                    broadcast: [MemThree]
+                memories:
+                  - content: null
+                    group: test
+                    name: MemOne
+                    type: object
+                  - content: null
+                    group: test
+                    name: MemTwo
+                    type: container
+                  - content: null
+                    group: test
+                    name: MemThree
+                    type: object""";
+
+        File configFile = new File(tempDir.toString(), "test_config.yaml");
+        try {
+            FileWriter writer = new FileWriter(configFile);
+            writer.write(yamlConfig);
+            writer.close();
+        } catch (IOException e) {
+            fail("Failed to create mock config file");
+        }
+
+        exitCode = new CommandLine(new Main()).execute("init", "--overwrite", "--file", configFile.toString());
         originalOut.println(out.toString());
+        assertEquals(0, exitCode);
+
+        assertPathsExists(Arrays.asList("/src/main/java/my/project/codelets/TestCodelet.java"));
+
     }
 
 }

@@ -242,7 +242,11 @@ public class CSTInit implements Callable<Integer> {
                     .map(CodeletConfig::getName)
                     .anyMatch(e -> e.equals(codelet.getName()));
             if (overwrite || !codeletCodeExists) {
-                File path = new File(rootFolder + "/src/main/java/" + packageName.replace(".", "/") + "/codelets/" + codelet.getGroup().toLowerCase());
+
+                String codeletPath = rootFolder + "/src/main/java/" + packageName.replace(".", "/") + "/codelets";
+                if (codelet.getGroup() != null)
+                    codeletPath += "/" + codelet.getGroup().toLowerCase();
+                File path = new File(codeletPath);
                 path.mkdirs();
                 String codeletCode = "";
                 try {

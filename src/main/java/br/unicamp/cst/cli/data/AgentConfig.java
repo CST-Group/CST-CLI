@@ -10,6 +10,7 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 import static br.unicamp.cst.cli.data.MemoryConfig.CONTAINER_TYPE;
 import static br.unicamp.cst.cli.data.MemoryConfig.OBJECT_TYPE;
@@ -82,7 +83,7 @@ public class AgentConfig {
 
         //Codelet Groups
         Iterator<String> groups = getCodelets().stream()
-                .map(CodeletConfig::getGroup).distinct().iterator();
+                .map(CodeletConfig::getGroup).distinct().filter(Objects::nonNull).iterator();
         boolean first = true;
         while (groups.hasNext()) {
             MethodCallExpr codeletGroupCall = new MethodCallExpr();
@@ -185,8 +186,9 @@ public class AgentConfig {
             }
 
             constructorBody.addStatement(new MethodCallExpr("insertCodelet", new NameExpr(codeletVarName)));
-            constructorBody.addStatement(new MethodCallExpr("registerCodelet",
-                    new NameExpr(codeletVarName), new StringLiteralExpr(codelet.getGroup())));
+            if (codelet.getGroup() != null)
+                constructorBody.addStatement(new MethodCallExpr("registerCodelet",
+                        new NameExpr(codeletVarName), new StringLiteralExpr(codelet.getGroup())));
 
             //Jump line
             constructorBody.addStatement(new EmptyStmt());
