@@ -1,12 +1,14 @@
 package br.unicamp.cst.cli.commands;
 
+import br.unicamp.cst.cli.data.AgentConfig;
+import br.unicamp.cst.cli.data.CodeletConfig;
+import br.unicamp.cst.cli.data.ConfigParser;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 @Command(name = "add", description = "Adds a new codelet to the project structure")
 public class CSTAdd implements Callable<Integer> {
@@ -30,8 +32,12 @@ public class CSTAdd implements Callable<Integer> {
             selected = VALID_OPTIONS.values()[parsedInput - 1];
 
         //Process command
+        AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
+        Object[] groups = currAgentConfig.getCodelets().stream()
+                .map(CodeletConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
         switch (selected) {
             case CODELET:
+                //Ask codelet name
                 System.out.print("Codelet Name: ");
                 String codeletName = input.nextLine();
                 while (codeletName.isBlank()) {
@@ -40,6 +46,19 @@ public class CSTAdd implements Callable<Integer> {
                     codeletName = input.nextLine();
                 }
                 System.out.println(codeletName);
+                //Ask codelet group
+                System.out.println("Select a codelet group to add to:\n");
+                System.out.println("    (0) NONE");
+                for (int i = 0; i < groups.length; i++) {
+                    System.out.println("    (" + (i+1) + ") " + groups[i]);
+                }
+                System.out.print(Ansi.AUTO.string("@|bold Select an option (default 0) [0.." + groups.length + "]:|@"));
+                int groupIdx = Integer.parseInt(input.nextLine());
+                String codeletGroup = null;
+                if (0 < groupIdx && groupIdx <= groups.length)
+                    codeletGroup = (String) groups[groupIdx-1];
+                System.out.println(codeletGroup);
+                //Ask codelet inputs, outputs and broadcasts
                 System.out.print("Codelet inputs (comma separated): ");
                 String codeletInputs = input.nextLine();
                 System.out.print("Codelet outputs (comma separated): ");
@@ -47,6 +66,8 @@ public class CSTAdd implements Callable<Integer> {
                 System.out.print("Codelet broadcast outputs (comma separated): ");
                 String codeletBroadcasts = input.nextLine();
 
+                //Create codelet config
+                CodeletConfig newCodelet = new CodeletConfig(codeletName);
                 break;
             case MEMORY_OBJECT:
                 break;
