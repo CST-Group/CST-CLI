@@ -10,32 +10,36 @@ import java.util.concurrent.Callable;
 
 @Command(name = "add", description = "Adds a new codelet to the project structure")
 public class CSTAdd implements Callable<Integer> {
-    private static final String CODELET = "1";
-    private static final String MEMORY_OBJECT = "2";
-    private static final String MEMORY_CONTAINER = "3";
-    private static final List<String> VALID_OPTIONS = Arrays.asList(CODELET, MEMORY_OBJECT, MEMORY_CONTAINER);
 
     @Override
     public Integer call() throws Exception {
-        String options = Ansi.AUTO.string("Select element to add\n"
-                + "   (1) Codelet\n"
-                + "   (2) Memory Object\n"
-                + "   (3) Memory Container\n"
-                + " @|bold Select an option (default 1) [1..3]:|@ ");
-        System.out.print(options);
+        //Build string with options and display it
+        StringBuilder options = new StringBuilder("Select element to add\n");
+        for (VALID_OPTIONS en : VALID_OPTIONS.values()) {
+            options.append("    (" + (en.ordinal() + 1) + ") " + en.displayName + "\n");
+        }
+        options.append(" @|bold Select an option (default 1) [1..3]:|@ ");
+        System.out.print(Ansi.AUTO.string(options.toString()));
+
+        //Read selected input
         Scanner input = new Scanner(System.in);
         String inputOption = input.nextLine();
-        String selected = "1";
-        if (!inputOption.isBlank() && VALID_OPTIONS.contains(inputOption))
-            selected = inputOption;
-        switch (selected){
+        int parsedInput = Integer.parseInt(inputOption);
+        VALID_OPTIONS selected = VALID_OPTIONS.values()[0];
+        if (!inputOption.isBlank() && parsedInput <= VALID_OPTIONS.values().length)
+            selected = VALID_OPTIONS.values()[parsedInput - 1];
+
+        //Process command
+        switch (selected) {
             case CODELET:
-                String askName = Ansi.AUTO.string("Codelet Name: ");
-                System.out.print(askName);
+                System.out.print("Codelet Name: ");
                 String codeletName = input.nextLine();
-                while (codeletName.isBlank())
+                while (codeletName.isBlank()) {
                     System.out.println(Ansi.AUTO.string("@|red Codelet name cannot be empty|@"));
+                    System.out.print("Codelet Name: ");
                     codeletName = input.nextLine();
+                }
+                System.out.println(codeletName);
                 System.out.print("Codelet inputs (comma separated): ");
                 String codeletInputs = input.nextLine();
                 System.out.print("Codelet outputs (comma separated): ");
@@ -51,5 +55,17 @@ public class CSTAdd implements Callable<Integer> {
 
         }
         return 0;
+    }
+
+    enum VALID_OPTIONS {
+        CODELET("Codelet"),
+        MEMORY_OBJECT("Memory Object"),
+        MEMORY_CONTAINER("Memory Container");
+
+        public String displayName;
+
+        VALID_OPTIONS(String displayName) {
+            this.displayName = displayName;
+        }
     }
 }
