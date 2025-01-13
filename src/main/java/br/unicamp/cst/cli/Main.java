@@ -12,9 +12,10 @@ import picocli.CommandLine;
         mixinStandardHelpOptions = true,
         version = "CST CLI - Beta version 0.2",
         subcommands = {
-            CSTInit.class,
-            CSTSave.class,
-            CSTRun.class,
+                CSTInit.class,
+                CSTSave.class,
+                CSTRun.class,
+                CSTAdd.class,
         })
 public class Main implements Runnable {
     @CommandLine.Spec
