@@ -3,6 +3,7 @@ package br.unicamp.cst.cli.commands;
 import br.unicamp.cst.cli.data.AgentConfig;
 import br.unicamp.cst.cli.data.CodeletConfig;
 import br.unicamp.cst.cli.data.ConfigParser;
+import br.unicamp.cst.cli.data.MemoryConfig;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
@@ -13,6 +14,9 @@ import java.util.stream.Collectors;
 @Command(name = "add", description = "Adds a new codelet to the project structure")
 public class CSTAdd implements Callable<Integer> {
 
+    Scanner input = new Scanner(System.in);
+    AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
+
     @Override
     public Integer call() throws Exception {
         //Build string with options and display it
@@ -20,11 +24,10 @@ public class CSTAdd implements Callable<Integer> {
         for (VALID_OPTIONS en : VALID_OPTIONS.values()) {
             options.append("    (" + (en.ordinal() + 1) + ") " + en.displayName + "\n");
         }
-        options.append(" @|bold Select an option (default 1) [1..3]:|@ ");
+        options.append(" @|bold Select an option (default 1) [1.."+VALID_OPTIONS.values().length + "]:|@ ");
         System.out.print(Ansi.AUTO.string(options.toString()));
 
         //Read selected input
-        Scanner input = new Scanner(System.in);
         String inputOption = input.nextLine();
         int parsedInput = Integer.parseInt(inputOption);
         VALID_OPTIONS selected = VALID_OPTIONS.values()[0];
@@ -32,50 +35,107 @@ public class CSTAdd implements Callable<Integer> {
             selected = VALID_OPTIONS.values()[parsedInput - 1];
 
         //Process command
-        AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
-        Object[] groups = currAgentConfig.getCodelets().stream()
-                .map(CodeletConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
         switch (selected) {
             case CODELET:
-                //Ask codelet name
-                System.out.print("Codelet Name: ");
-                String codeletName = input.nextLine();
-                while (codeletName.isBlank()) {
-                    System.out.println(Ansi.AUTO.string("@|red Codelet name cannot be empty|@"));
-                    System.out.print("Codelet Name: ");
-                    codeletName = input.nextLine();
-                }
-                System.out.println(codeletName);
-                //Ask codelet group
-                System.out.println("Select a codelet group to add to:\n");
-                System.out.println("    (0) NONE");
-                for (int i = 0; i < groups.length; i++) {
-                    System.out.println("    (" + (i+1) + ") " + groups[i]);
-                }
-                System.out.print(Ansi.AUTO.string("@|bold Select an option (default 0) [0.." + groups.length + "]:|@"));
-                int groupIdx = Integer.parseInt(input.nextLine());
-                String codeletGroup = null;
-                if (0 < groupIdx && groupIdx <= groups.length)
-                    codeletGroup = (String) groups[groupIdx-1];
-                System.out.println(codeletGroup);
-                //Ask codelet inputs, outputs and broadcasts
-                System.out.print("Codelet inputs (comma separated): ");
-                String codeletInputs = input.nextLine();
-                System.out.print("Codelet outputs (comma separated): ");
-                String codeletOutputs = input.nextLine();
-                System.out.print("Codelet broadcast outputs (comma separated): ");
-                String codeletBroadcasts = input.nextLine();
-
-                //Create codelet config
-                CodeletConfig newCodelet = new CodeletConfig(codeletName);
+                processCreateCodelet();
                 break;
             case MEMORY_OBJECT:
+                processCreateMemory();
                 break;
             case MEMORY_CONTAINER:
                 break;
 
         }
+
+        //Re-execute if selected
+        System.out.print(Ansi.AUTO.string("Would you like to add another element? [y/@|bold n|@]: "));
+        String ans = input.nextLine();
+        if (ans.equalsIgnoreCase("y")){
+            return this.call();
+        }
+
         return 0;
+    }
+
+    private void processCreateCodelet(){
+        //Ask codelet name
+        System.out.print("Codelet Name: ");
+        String codeletName = input.nextLine();
+        while (codeletName.isBlank()) {
+            System.out.println(Ansi.AUTO.string("@|red Codelet name cannot be empty|@"));
+            System.out.print("Codelet Name: ");
+            codeletName = input.nextLine();
+        }
+
+        //Ask codelet group
+        Object[] groups = currAgentConfig.getCodelets().stream()
+                .map(CodeletConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
+        System.out.println("\nSelect a codelet group to add to:");
+        System.out.println("    (0) NONE");
+        System.out.println("    (1) Add new Group");
+        for (int i = 0; i < groups.length; i++) {
+            System.out.println("    (" + (i+2) + ") " + groups[i]);
+        }
+        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 0) [0.." + (groups.length + 1) + "]: |@"));
+        int groupIdx = Integer.parseInt(input.nextLine());
+        String codeletGroup = null;
+        if (groupIdx == 1){
+            System.out.print("Enter new Group name: ");
+            codeletGroup = input.nextLine();
+        }
+        if (1 < groupIdx && groupIdx <= groups.length + 1)
+            codeletGroup = (String) groups[groupIdx-2];
+        System.out.println(codeletGroup);
+        //Ask codelet inputs, outputs and broadcasts
+        System.out.print("Enter codelet inputs (comma separated): ");
+        String codeletInputs = input.nextLine();
+        System.out.print("Enter codelet outputs (comma separated): ");
+        String codeletOutputs = input.nextLine();
+        System.out.print("Enter codelet broadcast outputs (comma separated): ");
+        String codeletBroadcasts = input.nextLine();
+
+        Set<String> codeletsMemories = new HashSet<>();
+        if (!codeletInputs.isBlank())
+            codeletsMemories.addAll(List.of(codeletInputs.split(",")));
+        if (!codeletOutputs.isBlank())
+            codeletsMemories.addAll(List.of(codeletOutputs.split(",")));
+        if (!codeletBroadcasts.isBlank())
+            codeletsMemories.addAll(List.of(codeletBroadcasts.split(",")));
+
+        Set<String> existingMemories = currAgentConfig.getMemories().stream().map(MemoryConfig::getName).collect(Collectors.toSet());
+        codeletsMemories.removeIf(existingMemories::contains);
+
+        if (!codeletsMemories.isEmpty()){
+            System.out.println("Some of the memories connected to the codelet are not declared in the current project:");
+            System.out.println(codeletsMemories);
+            System.out.print(Ansi.AUTO.string("Would you like to add this memories? [@|bold Y|@/n]: "));
+            String ans = input.nextLine();
+            if (!ans.equalsIgnoreCase("n")){
+                codeletsMemories.forEach(this::createMemoryConfig);
+            }
+        }
+
+        //Create codelet config
+        CodeletConfig newCodelet = new CodeletConfig(codeletName);
+        newCodelet.setGroup(codeletGroup);
+        if (!codeletInputs.isBlank())
+            for (String inMem : codeletInputs.split(","))
+                newCodelet.addIn(inMem);
+        if (!codeletOutputs.isBlank())
+            for (String outMem : codeletOutputs.split(","))
+                newCodelet.addOut(outMem);
+        if (!codeletBroadcasts.isBlank())
+            for (String broadMem : codeletBroadcasts.split(","))
+                newCodelet.addBroadcast(broadMem);
+    }
+
+    private void processCreateMemory(){
+
+        createMemoryConfig("newMem");
+    }
+
+    private void createMemoryConfig(String memoryName){
+        System.out.println(memoryName);
     }
 
     enum VALID_OPTIONS {
