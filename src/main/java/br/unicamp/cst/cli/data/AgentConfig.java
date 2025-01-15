@@ -50,6 +50,10 @@ public class AgentConfig {
         this.codelets = codelets;
     }
 
+    public void addCodeletConfig(CodeletConfig newCodelet) {
+        this.codelets.add(newCodelet);
+    }
+
     public List<MemoryConfig> getMemories() {
         return memories;
     }
@@ -334,4 +338,5 @@ public class AgentConfig {
         }
         return this;
     }
+
 }

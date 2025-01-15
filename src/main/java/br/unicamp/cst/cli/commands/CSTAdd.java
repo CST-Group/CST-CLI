@@ -4,9 +4,14 @@ import br.unicamp.cst.cli.data.AgentConfig;
 import br.unicamp.cst.cli.data.CodeletConfig;
 import br.unicamp.cst.cli.data.ConfigParser;
 import br.unicamp.cst.cli.data.MemoryConfig;
+import com.github.javaparser.ParseProblemException;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -16,9 +21,39 @@ public class CSTAdd implements Callable<Integer> {
 
     Scanner input = new Scanner(System.in);
     AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
+    List<CodeletConfig> newCodelets = new ArrayList<>();
+
+    Path rootFolder;
 
     @Override
     public Integer call() throws Exception {
+        if (findRootFolder()) {
+            selectMenu();
+            return 0;
+        }else {
+            return 1;
+        }
+    }
+
+    private boolean findRootFolder(){
+        File currDir = new File(System.getProperty("user.dir"));
+
+        File srcFolder = new File(currDir.getAbsolutePath() + "/src");
+        while (currDir != null && !srcFolder.exists()) {
+            srcFolder = new File(currDir.getAbsolutePath() + "/src");
+            currDir = currDir.getParentFile();
+        }
+
+        if (!srcFolder.exists()){
+            System.out.println(Ansi.AUTO.string("@|bold,red Current folder is not part of a CST project|@"));
+            return false;
+        } else {
+            rootFolder = currDir.toPath();
+            return true;
+        }
+    }
+
+    private void selectMenu(){
         //Build string with options and display it
         StringBuilder options = new StringBuilder("Select element to add\n");
         for (VALID_OPTIONS en : VALID_OPTIONS.values()) {
@@ -44,17 +79,40 @@ public class CSTAdd implements Callable<Integer> {
                 break;
             case MEMORY_CONTAINER:
                 break;
-
         }
-
         //Re-execute if selected
         System.out.print(Ansi.AUTO.string("Would you like to add another element? [y/@|bold n|@]: "));
         String ans = input.nextLine();
         if (ans.equalsIgnoreCase("y")){
-            return this.call();
+            selectMenu();
+        }
+    }
+
+    private void applyChanges() throws IOException {
+        for (CodeletConfig codelet : newCodelets) {
+            String codeletPath = rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/") + "/codelets";
+            if (codelet.getGroup() != null)
+                codeletPath += "/" + codelet.getGroup().toLowerCase();
+            File path = new File(codeletPath);
+            path.mkdirs();
+            String codeletCode = "";
+            try {
+                codeletCode = codelet.generateCode(currAgentConfig.getPackageName());
+            } catch (ParseProblemException e) {
+                //TODO: Handle this excpetion
+                throw new IOException();
+            }
+            FileWriter writer = new FileWriter(path + "/" + codelet.getName() + ".java");
+            writer.write(codeletCode);
+            writer.close();
         }
 
-        return 0;
+        File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/"));
+        path.mkdirs();
+        String agentMindCode = currAgentConfig.generateCode();
+        FileWriter writer = new FileWriter(path + "/AgentMind.java");
+        writer.write(agentMindCode);
+        writer.close();
     }
 
     private void processCreateCodelet(){
@@ -127,10 +185,12 @@ public class CSTAdd implements Callable<Integer> {
         if (!codeletBroadcasts.isBlank())
             for (String broadMem : codeletBroadcasts.split(","))
                 newCodelet.addBroadcast(broadMem);
+
+        currAgentConfig.addCodeletConfig(newCodelet);
+        newCodelets.add(newCodelet);
     }
 
     private void processCreateMemory(){
-
         createMemoryConfig("newMem");
     }
 
