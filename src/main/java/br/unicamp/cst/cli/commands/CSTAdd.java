@@ -1,14 +1,10 @@
 package br.unicamp.cst.cli.commands;
 
-import br.unicamp.cst.cli.data.AgentConfig;
-import br.unicamp.cst.cli.data.CodeletConfig;
-import br.unicamp.cst.cli.data.ConfigParser;
-import br.unicamp.cst.cli.data.MemoryConfig;
+import br.unicamp.cst.cli.data.*;
 import com.github.javaparser.ParseProblemException;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
-import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -61,29 +57,22 @@ public class CSTAdd implements Callable<Integer> {
 
     private void selectMenu() throws IOException {
         //Build string with options and display it
-        StringBuilder options = new StringBuilder("Select element to add\n");
-        for (VALID_OPTIONS en : VALID_OPTIONS.values()) {
-            options.append("    (" + (en.ordinal() + 1) + ") " + en.displayName + "\n");
-        }
-        options.append(" @|bold Select an option (default 1) [1.."+VALID_OPTIONS.values().length + "]:|@ ");
-        System.out.print(Ansi.AUTO.string(options.toString()));
+        System.out.println("Select element to add:");
+        System.out.println("    (1) Codelet");
+        System.out.println("    (2) Memory Element");
+        System.out.print(Ansi.AUTO.string(" @|bold Select an option (default 1): |@ "));
 
         //Read selected input
-        String inputOption = input.nextLine();
-        int parsedInput = Integer.parseInt(inputOption);
-        VALID_OPTIONS selected = VALID_OPTIONS.values()[0];
-        if (!inputOption.isBlank() && parsedInput <= VALID_OPTIONS.values().length)
-            selected = VALID_OPTIONS.values()[parsedInput - 1];
+        int selected = Integer.parseInt(input.nextLine());
 
         //Process command
         switch (selected) {
-            case CODELET:
-                processCreateCodelet();
-                break;
-            case MEMORY_OBJECT:
+            case 2:
                 processCreateMemory();
                 break;
-            case MEMORY_CONTAINER:
+            case 1:
+            default:
+                processCreateCodelet();
                 break;
         }
         //Re-execute if selected
@@ -280,17 +269,5 @@ public class CSTAdd implements Callable<Integer> {
         newMemoryConfig.setType(memoryType);
 
         modifiedConfig.addMemoryConfig(newMemoryConfig);
-    }
-
-    enum VALID_OPTIONS {
-        CODELET("Codelet"),
-        MEMORY_OBJECT("Memory Object"),
-        MEMORY_CONTAINER("Memory Container");
-
-        public String displayName;
-
-        VALID_OPTIONS(String displayName) {
-            this.displayName = displayName;
-        }
     }
 }
