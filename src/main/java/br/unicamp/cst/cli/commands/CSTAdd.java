@@ -8,9 +8,11 @@ import com.github.javaparser.ParseProblemException;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -24,10 +26,12 @@ public class CSTAdd implements Callable<Integer> {
     List<CodeletConfig> newCodelets = new ArrayList<>();
 
     Path rootFolder;
+    AgentConfig modifiedConfig;
 
     @Override
     public Integer call() throws Exception {
         if (findRootFolder()) {
+            modifiedConfig = ConfigParser.parseProjectToConfig();
             selectMenu();
             return 0;
         }else {
@@ -53,7 +57,7 @@ public class CSTAdd implements Callable<Integer> {
         }
     }
 
-    private void selectMenu(){
+    private void selectMenu() throws IOException {
         //Build string with options and display it
         StringBuilder options = new StringBuilder("Select element to add\n");
         for (VALID_OPTIONS en : VALID_OPTIONS.values()) {
@@ -86,6 +90,7 @@ public class CSTAdd implements Callable<Integer> {
         if (ans.equalsIgnoreCase("y")){
             selectMenu();
         }
+        applyChanges();
     }
 
     private void applyChanges() throws IOException {
@@ -107,11 +112,50 @@ public class CSTAdd implements Callable<Integer> {
             writer.close();
         }
 
-        File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/"));
-        path.mkdirs();
-        String agentMindCode = currAgentConfig.generateCode();
-        FileWriter writer = new FileWriter(path + "/AgentMind.java");
-        writer.write(agentMindCode);
+
+        File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/") + "/AgentMind.java");
+
+        //Base version of code to compare with original (may contain comments and auxiliary functions)
+        //and with the modified version of project.
+        String[] commonBase = currAgentConfig.generateCode().split("\n");
+        String[] modifiedCode = modifiedConfig.generateCode().split("\n");
+        String[] currAgentCode = {""};
+        if (path.exists()){
+            currAgentCode = Files.readAllLines(path.toPath()).toArray(currAgentCode);
+        }
+        System.out.println(Arrays.toString(currAgentCode));
+
+        StringBuilder mergedCode = new StringBuilder();
+        int pB = 0, pC = 0, pM = 0;
+        while (pB < commonBase.length){
+            String line = commonBase[pB];
+            boolean equalCurrent = line.strip().equals(currAgentCode[pC].strip());
+            boolean equalModified = line.strip().equals(modifiedCode[pM].strip());
+            if (equalCurrent && equalModified){
+                mergedCode.append(line).append("\n");
+                pC++;
+                pM++;
+                pB++;
+            } else if (!equalCurrent && equalModified){
+                mergedCode.append(currAgentCode[pC]).append("\n");
+                pC++;
+            } else if (equalCurrent && !equalModified){
+                 mergedCode.append(modifiedCode[pM]).append("\n");
+                 pM++;
+            } else if (!equalCurrent && !equalModified){
+                mergedCode.append(modifiedCode[pM]).append("\n");
+                pM++;
+            }
+        }
+        while (pM < modifiedCode.length){
+            mergedCode.append(modifiedCode[pM++]).append("\n");
+        }
+        while (pC < currAgentCode.length){
+            mergedCode.append(currAgentCode[pC++]).append("\n");
+        }
+
+        FileWriter writer = new FileWriter(path);
+        writer.write(mergedCode.toString());
         writer.close();
     }
 
@@ -126,7 +170,7 @@ public class CSTAdd implements Callable<Integer> {
         }
 
         //Ask codelet group
-        Object[] groups = currAgentConfig.getCodelets().stream()
+        Object[] groups = modifiedConfig.getCodelets().stream()
                 .map(CodeletConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
         System.out.println("\nSelect a codelet group to add to:");
         System.out.println("    (0) NONE");
@@ -160,7 +204,7 @@ public class CSTAdd implements Callable<Integer> {
         if (!codeletBroadcasts.isBlank())
             codeletsMemories.addAll(List.of(codeletBroadcasts.split(",")));
 
-        Set<String> existingMemories = currAgentConfig.getMemories().stream().map(MemoryConfig::getName).collect(Collectors.toSet());
+        Set<String> existingMemories = modifiedConfig.getMemories().stream().map(MemoryConfig::getName).collect(Collectors.toSet());
         codeletsMemories.removeIf(existingMemories::contains);
 
         if (!codeletsMemories.isEmpty()){
@@ -186,7 +230,7 @@ public class CSTAdd implements Callable<Integer> {
             for (String broadMem : codeletBroadcasts.split(","))
                 newCodelet.addBroadcast(broadMem);
 
-        currAgentConfig.addCodeletConfig(newCodelet);
+        modifiedConfig.addCodeletConfig(newCodelet);
         newCodelets.add(newCodelet);
     }
 

@@ -24,6 +24,8 @@ public class CodeletConfig {
     private List<String> out = new ArrayList<>();
     private List<String> broadcast = new ArrayList<>();
 
+    public CodeletConfig() {}
+
     public CodeletConfig(String codeletName) {
         this.setName(codeletName);
     }
