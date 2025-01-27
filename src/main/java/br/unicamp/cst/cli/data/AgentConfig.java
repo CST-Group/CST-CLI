@@ -62,6 +62,10 @@ public class AgentConfig {
         this.memories = memories;
     }
 
+    public void addMemoryConfig(MemoryConfig newMemory) {
+        this.memories.add(newMemory);
+    }
+
     public String generateCode() {
         CompilationUnit compilationUnit = new CompilationUnit();
 

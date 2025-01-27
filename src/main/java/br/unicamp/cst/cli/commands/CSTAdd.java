@@ -18,21 +18,23 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
+import static br.unicamp.cst.cli.data.MemoryConfig.*;
+
 @Command(name = "add", description = "Adds a new codelet to the project structure")
 public class CSTAdd implements Callable<Integer> {
 
     Scanner input = new Scanner(System.in);
     AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
+    AgentConfig modifiedConfig = ConfigParser.parseProjectToConfig();
     List<CodeletConfig> newCodelets = new ArrayList<>();
 
     Path rootFolder;
-    AgentConfig modifiedConfig;
 
     @Override
     public Integer call() throws Exception {
         if (findRootFolder()) {
-            modifiedConfig = ConfigParser.parseProjectToConfig();
             selectMenu();
+            applyChanges();
             return 0;
         }else {
             return 1;
@@ -90,7 +92,6 @@ public class CSTAdd implements Callable<Integer> {
         if (ans.equalsIgnoreCase("y")){
             selectMenu();
         }
-        applyChanges();
     }
 
     private void applyChanges() throws IOException {
@@ -114,16 +115,16 @@ public class CSTAdd implements Callable<Integer> {
 
 
         File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/") + "/AgentMind.java");
-
         //Base version of code to compare with original (may contain comments and auxiliary functions)
         //and with the modified version of project.
+        System.out.println(modifiedConfig.toString());
+        System.out.println(modifiedConfig.toYaml());
         String[] commonBase = currAgentConfig.generateCode().split("\n");
         String[] modifiedCode = modifiedConfig.generateCode().split("\n");
         String[] currAgentCode = {""};
         if (path.exists()){
             currAgentCode = Files.readAllLines(path.toPath()).toArray(currAgentCode);
         }
-        System.out.println(Arrays.toString(currAgentCode));
 
         StringBuilder mergedCode = new StringBuilder();
         int pB = 0, pC = 0, pM = 0;
@@ -187,7 +188,6 @@ public class CSTAdd implements Callable<Integer> {
         }
         if (1 < groupIdx && groupIdx <= groups.length + 1)
             codeletGroup = (String) groups[groupIdx-2];
-        System.out.println(codeletGroup);
         //Ask codelet inputs, outputs and broadcasts
         System.out.print("Enter codelet inputs (comma separated): ");
         String codeletInputs = input.nextLine();
@@ -235,11 +235,51 @@ public class CSTAdd implements Callable<Integer> {
     }
 
     private void processCreateMemory(){
-        createMemoryConfig("newMem");
+        //Ask memory name
+        System.out.print("Memory Name: ");
+        String memoryName = input.nextLine();
+        while (memoryName.isBlank()) {
+            System.out.println(Ansi.AUTO.string("@|red Memory name cannot be empty|@"));
+            System.out.print("Memory Name: ");
+            memoryName = input.nextLine();
+        }
+
+        createMemoryConfig(memoryName);
     }
 
     private void createMemoryConfig(String memoryName){
-        System.out.println(memoryName);
+        //Ask memory type
+        System.out.println("\nSelect memory type for " + memoryName + ":");
+        System.out.println("    (1) Memory Object");
+        System.out.println("    (2) Memory Container");
+        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 1): |@"));
+        int memTypeIdx = Integer.parseInt(input.nextLine());
+        String memoryType = memTypeIdx == 2 ? CONTAINER_TYPE : OBJECT_TYPE;
+
+        //Ask memory group
+        Object[] groups = modifiedConfig.getMemories().stream()
+                .map(MemoryConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
+        System.out.println("\nSelect a memory group to add to:");
+        System.out.println("    (0) NONE");
+        System.out.println("    (1) Add new Group");
+        for (int i = 0; i < groups.length; i++) {
+            System.out.println("    (" + (i+2) + ") " + groups[i]);
+        }
+        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 0) [0.." + (groups.length + 1) + "]: |@"));
+        int groupIdx = Integer.parseInt(input.nextLine());
+        String memoryGroup = null;
+        if (groupIdx == 1){
+            System.out.print("Enter new Group name: ");
+            memoryGroup = input.nextLine();
+        }
+        if (1 < groupIdx && groupIdx <= groups.length + 1)
+            memoryGroup = (String) groups[groupIdx-2];
+
+        MemoryConfig newMemoryConfig = new MemoryConfig(memoryName);
+        newMemoryConfig.setGroup(memoryGroup);
+        newMemoryConfig.setType(memoryType);
+
+        modifiedConfig.addMemoryConfig(newMemoryConfig);
     }
 
     enum VALID_OPTIONS {
