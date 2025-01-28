@@ -280,7 +280,6 @@ public class CSTInit implements Callable<Integer> {
             Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
             agentConfig = yamlParser.load(configInfo);
         }
-        System.out.println(agentConfig);
     }
 
 }

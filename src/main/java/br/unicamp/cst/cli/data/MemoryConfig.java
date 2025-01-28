@@ -10,7 +10,7 @@ import java.util.Map;
 public class MemoryConfig {
     public static final String OBJECT_TYPE = "object";
     public static final String CONTAINER_TYPE = "container";
-    public static final List<String> VALID_CONTENT_TYPES = Arrays.asList("int", "Integer", "bool", "Boolean", "char", "Character", "short", "Short", "long", "Long", "float", "Float", "double", "Double", "byte", "Byte", "String");
+    public static final List<String> VALID_CONTENT_TYPES = Arrays.asList("int", "Integer", "boolean", "Boolean", "char", "Character", "short", "Short", "long", "Long", "float", "Float", "double", "Double", "byte", "Byte", "String");
     private String name;
     private String type;
     private Map<String, Object> content;
@@ -37,7 +37,7 @@ public class MemoryConfig {
     public void setType(String type) {
         if (type != null) {
             if (OBJECT_TYPE.equals(type.toLowerCase()) || CONTAINER_TYPE.equals(type.toLowerCase())) {
-                this.type = type;
+                this.type = type.toLowerCase();
             } else {
                 System.err.println("MEMORY[" + this.getName() + "]: Memory type should be 'object' or 'container'");
                 throw new YAMLException("MEMORY[" + this.getName() + "]: Memory type should be 'object' or 'container'");
