@@ -21,9 +21,7 @@ import org.yaml.snakeyaml.constructor.Constructor;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -282,6 +280,7 @@ public class CSTInit implements Callable<Integer> {
             Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
             agentConfig = yamlParser.load(configInfo);
         }
+        System.out.println(agentConfig);
     }
 
 }

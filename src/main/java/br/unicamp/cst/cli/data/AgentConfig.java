@@ -142,6 +142,27 @@ public class AgentConfig {
         first = true;
         for (MemoryConfig memory : this.getMemories()) {
             String memoryVar = getVarName(memory.getName());
+            // Initialize memory content
+            AssignExpr initializeContent = null;
+            if (memory.getContent() != null){
+                String contentType = memory.getContent().keySet().iterator().next();
+                String contentInitialValue = memory.getContent().get(contentType).toString();
+                LiteralExpr assignValue;
+                if (contentInitialValue == null) {
+                    assignValue = new NullLiteralExpr();
+                } else {
+                    try {
+                        double d = Double.parseDouble(contentInitialValue);
+                        assignValue = new DoubleLiteralExpr(contentInitialValue);
+                    } catch (NumberFormatException nfe) {
+                        assignValue = new StringLiteralExpr(contentInitialValue);
+                    }
+                }
+                Type memoryContentType = new ClassOrInterfaceType(null, contentType);
+                VariableDeclarationExpr memoryContentDeclaration = new VariableDeclarationExpr(memoryContentType, memoryVar + "Content");
+                initializeContent = new AssignExpr(memoryContentDeclaration, assignValue, AssignExpr.Operator.ASSIGN);
+                constructorBody.addStatement(initializeContent);
+            }
             // Initialize memory object
             MethodCallExpr createMemoryCall = new MethodCallExpr();
             if (memory.getType().equals(OBJECT_TYPE))
@@ -150,6 +171,9 @@ public class AgentConfig {
                 createMemoryCall.setName("createMemoryContainer");
             }
             createMemoryCall.addArgument(new StringLiteralExpr(memory.getName()));
+            //Add content initialization if defined
+            if (initializeContent != null)
+                createMemoryCall.addArgument(new NameExpr(memoryVar + "Content"));
             AssignExpr initializeMemory = new AssignExpr(new NameExpr(memoryVar), createMemoryCall, AssignExpr.Operator.ASSIGN);
             if (first) {
                 initializeMemory.addOrphanComment(new LineComment(" Memories Initialization"));

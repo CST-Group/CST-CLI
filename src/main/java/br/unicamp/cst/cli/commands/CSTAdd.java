@@ -60,7 +60,7 @@ public class CSTAdd implements Callable<Integer> {
         System.out.println("Select element to add:");
         System.out.println("    (1) Codelet");
         System.out.println("    (2) Memory Element");
-        System.out.print(Ansi.AUTO.string(" @|bold Select an option (default 1): |@ "));
+        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 1): |@ "));
 
         //Read selected input
         int selected = Integer.parseInt(input.nextLine());
@@ -76,7 +76,7 @@ public class CSTAdd implements Callable<Integer> {
                 break;
         }
         //Re-execute if selected
-        System.out.print(Ansi.AUTO.string("Would you like to add another element? [y/@|bold n|@]: "));
+        System.out.print(Ansi.AUTO.string("Would you like to add another element? [y/@|bold,blue n|@]: "));
         String ans = input.nextLine();
         if (ans.equalsIgnoreCase("y")){
             selectMenu();
@@ -106,8 +106,6 @@ public class CSTAdd implements Callable<Integer> {
         File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/") + "/AgentMind.java");
         //Base version of code to compare with original (may contain comments and auxiliary functions)
         //and with the modified version of project.
-        System.out.println(modifiedConfig.toString());
-        System.out.println(modifiedConfig.toYaml());
         String[] commonBase = currAgentConfig.generateCode().split("\n");
         String[] modifiedCode = modifiedConfig.generateCode().split("\n");
         String[] currAgentCode = {""};
@@ -199,7 +197,7 @@ public class CSTAdd implements Callable<Integer> {
         if (!codeletsMemories.isEmpty()){
             System.out.println("Some of the memories connected to the codelet are not declared in the current project:");
             System.out.println(codeletsMemories);
-            System.out.print(Ansi.AUTO.string("Would you like to add this memories? [@|bold Y|@/n]: "));
+            System.out.print(Ansi.AUTO.string("Would you like to add this memories? [@|bold,blue Y|@/n]: "));
             String ans = input.nextLine();
             if (!ans.equalsIgnoreCase("n")){
                 codeletsMemories.forEach(this::createMemoryConfig);
