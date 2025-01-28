@@ -1,6 +1,7 @@
 package br.unicamp.cst.cli.commands;
 
 import br.unicamp.cst.cli.data.*;
+import br.unicamp.cst.cli.util.CodeUtils;
 import com.github.javaparser.ParseProblemException;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
@@ -106,44 +107,14 @@ public class CSTAdd implements Callable<Integer> {
         File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/") + "/AgentMind.java");
         //Base version of code to compare with original (may contain comments and auxiliary functions)
         //and with the modified version of project.
-        String[] commonBase = currAgentConfig.generateCode().split("\n");
-        String[] modifiedCode = modifiedConfig.generateCode().split("\n");
-        String[] currAgentCode = {""};
+        String currAgentCode = "";
         if (path.exists()){
-            currAgentCode = Files.readAllLines(path.toPath()).toArray(currAgentCode);
+            currAgentCode = String.join("\n", Files.readAllLines(path.toPath()));
         }
-
-        StringBuilder mergedCode = new StringBuilder();
-        int pB = 0, pC = 0, pM = 0;
-        while (pB < commonBase.length){
-            String line = commonBase[pB];
-            boolean equalCurrent = line.strip().equals(currAgentCode[pC].strip());
-            boolean equalModified = line.strip().equals(modifiedCode[pM].strip());
-            if (equalCurrent && equalModified){
-                mergedCode.append(line).append("\n");
-                pC++;
-                pM++;
-                pB++;
-            } else if (!equalCurrent && equalModified){
-                mergedCode.append(currAgentCode[pC]).append("\n");
-                pC++;
-            } else if (equalCurrent && !equalModified){
-                 mergedCode.append(modifiedCode[pM]).append("\n");
-                 pM++;
-            } else if (!equalCurrent && !equalModified){
-                mergedCode.append(modifiedCode[pM]).append("\n");
-                pM++;
-            }
-        }
-        while (pM < modifiedCode.length){
-            mergedCode.append(modifiedCode[pM++]).append("\n");
-        }
-        while (pC < currAgentCode.length){
-            mergedCode.append(currAgentCode[pC++]).append("\n");
-        }
+        String mergedCode = CodeUtils.mergeCodes(currAgentConfig.generateCode(), modifiedConfig.generateCode(), currAgentCode);
 
         FileWriter writer = new FileWriter(path);
-        writer.write(mergedCode.toString());
+        writer.write(mergedCode);
         writer.close();
     }
 

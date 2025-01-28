@@ -3,6 +3,7 @@ package br.unicamp.cst.cli.commands;
 import br.unicamp.cst.cli.data.AgentConfig;
 import br.unicamp.cst.cli.data.CodeletConfig;
 import br.unicamp.cst.cli.data.ConfigParser;
+import br.unicamp.cst.cli.util.CodeUtils;
 import br.unicamp.cst.cli.util.TemplatesBundle;
 
 import com.github.javaparser.ParseProblemException;
@@ -261,9 +262,13 @@ public class CSTInit implements Callable<Integer> {
 
         File path = new File(rootFolder + "/src/main/java/" + packageName.replace(".", "/"));
         path.mkdirs();
-        if (!overwrite && currAgentConfig.getPackageName() != null)
-            agentConfig = currAgentConfig.mergeWith(agentConfig);
         String agentMindCode = agentConfig.generateCode();
+        if (!overwrite && currAgentConfig.getPackageName() != null) {
+            String baseCode = currAgentConfig.generateCode();
+            String modifiedCode = currAgentConfig.mergeWith(agentConfig).generateCode();
+            String fullCurrentCode = String.join("\n", Files.readAllLines(path.toPath()));
+            agentMindCode = CodeUtils.mergeCodes(baseCode, modifiedCode, fullCurrentCode);
+        }
         FileWriter writer = new FileWriter(path + "/AgentMind.java");
         writer.write(agentMindCode);
         writer.close();
