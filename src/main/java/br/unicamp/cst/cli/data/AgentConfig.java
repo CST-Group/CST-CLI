@@ -155,7 +155,10 @@ public class AgentConfig {
                         double d = Double.parseDouble(contentInitialValue);
                         assignValue = new DoubleLiteralExpr(contentInitialValue);
                     } catch (NumberFormatException nfe) {
-                        assignValue = new StringLiteralExpr(contentInitialValue);
+                        if (contentType.equalsIgnoreCase("boolean"))
+                            assignValue = new BooleanLiteralExpr(contentInitialValue.equals("true"));
+                       else
+                            assignValue = new StringLiteralExpr(contentInitialValue);
                     }
                 }
                 Type memoryContentType = new ClassOrInterfaceType(null, contentType);
