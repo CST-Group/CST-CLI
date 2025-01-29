@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 public class CSTInitTest {
 
@@ -70,17 +71,19 @@ public class CSTInitTest {
     }
 
     private void assertPathsExists(List<String> expectedPaths) {
-        for (String expectedPath : expectedPaths) {
-            File file = new File(tempDir + expectedPath);
-            assertTrue(file.exists(), "File or directory does not exist: " + expectedPath);
-        }
+        assertThat(expectedPaths).allSatisfy(path -> {
+            assertThat(new File(tempDir + path))
+                    .as("File or directory does not exist: %s", path)
+                    .exists();
+        });
     }
 
     private void assertPathsNotExists(List<String> expectedPaths) {
-        for (String expectedPath : expectedPaths) {
-            File file = new File(tempDir + expectedPath);
-            assertFalse(file.exists(), "File or directory does not exist: " + expectedPath);
-        }
+        assertThat(expectedPaths).allSatisfy(path -> {
+            assertThat(new File(tempDir + path))
+                    .as("File or directory does not exist: %s", path)
+                    .doesNotExist();
+        });
     }
 
     private String readFileFromTmpDir(String file) throws IOException {
@@ -90,17 +93,16 @@ public class CSTInitTest {
     @Test
     public void testInitAsksForRequiredParams(){
         initBasicTestProject();
-        assertEquals(0, exitCode);
-        assertEquals("Enter project name (default: " + dirName + ") : Enter package name (default: testproject): ", out.toString());
+        assertThat(exitCode).isEqualTo(0);
+        assertThat(out.toString()).isEqualTo("Enter project name (default: " + dirName + ") : Enter package name (default: testproject): ");
         File[] files = tempDir.toFile().listFiles();
-        assertNotNull(files);
-        assertTrue(files.length > 0);
+        assertThat(files).isNotNull().hasSizeGreaterThan(0);
     }
 
     @Test
     public void testDirectoryStructure(){
         initBasicTestProject();
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
         List<String> expectedPaths = Arrays.asList(
                 "/src/main/java/testProject/Main.java",
                 "/src/main/java/testProject/AgentMind.java",
@@ -124,19 +126,18 @@ public class CSTInitTest {
         // Set input to simulate choosing to overwrite and run command
         setInput("1\nTestProject\ntestProject\n");
         exitCode = new CommandLine(new Main()).execute("init");
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
-        assertTrue(out.toString().contains("WARNING: This directory is not empty"));
+        assertThat(out.toString()).contains("WARNING: This directory is not empty");
         File[] files = tempDir.toFile().listFiles();
-        assertNotNull(files);
-        assertTrue(files.length > 0);
+        assertThat(files).isNotNull().hasSizeGreaterThan(0);
     }
 
     @Test
     public void testCorrectYAMLConfigParsing() throws IOException {
         File configFile = createMockYAMLFile();
         exitCode = new CommandLine(new Main()).execute("init", "--file", configFile.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         List<String> expectedPaths = Arrays.asList(
                 "/src/main/java/my/project/Main.java",
@@ -190,7 +191,7 @@ public class CSTInitTest {
                     }
                 }""";
 
-        assertEquals(expectedAgentMind, readFileFromTmpDir("src/main/java/my/project/AgentMind.java"));
+        assertThat(expectedAgentMind).isEqualTo(readFileFromTmpDir("src/main/java/my/project/AgentMind.java"));
     }
 
     private File createMockYAMLFile() {
@@ -244,14 +245,13 @@ public class CSTInitTest {
             fail("Failed to create mock config file");
         }
         exitCode = new CommandLine(new Main()).execute("init", "--file", configFile.toString());
-        assertEquals(1, exitCode);
-        assertEquals("""
+        assertThat(exitCode).isEqualTo(1);
+        assertThat(out.toString()).isEqualTo("""
                 Configuration File contains errors. Could not parse configurations.
                  in 'string', line 1, column 1:
                     project-name: MyProject
                     ^
-                """,
-                out.toString());
+                """);
         List<String> expectedPaths = Arrays.asList(
                 "/src/main/java/my/project/Main.java",
                 "/src/main/java/my/project/AgentMind.java",
@@ -265,7 +265,7 @@ public class CSTInitTest {
     @Test
     public void testProjectNameAndPackageOptions() throws IOException {
         exitCode = new CommandLine(new Main()).execute("init", "--project-name", "ProjectName", "--package", "project.name");
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         List<String> expectedPaths = Arrays.asList(
                 "/src/main/java/project/name/Main.java",
@@ -274,30 +274,28 @@ public class CSTInitTest {
         );
         assertPathsExists(expectedPaths);
 
-        assertEquals("rootProject.name = 'ProjectName'", readFileFromTmpDir("/settings.gradle"));
+        assertThat(readFileFromTmpDir("/settings.gradle")).isEqualTo("rootProject.name = 'ProjectName'");
 
     }
 
     @Test
     public void testGradleConfigFiles() throws IOException {
         initBasicTestProject();
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         String buildGradle = readFileFromTmpDir("/build.gradle");
-        boolean isApplication = buildGradle.contains("id 'application'");
-        boolean hasCSTDependency = buildGradle.contains("maven { url 'https://jitpack.io' }") &&
-                                   buildGradle.contains("implementation 'com.github.CST-Group:cst:1.4.1'");
-        boolean hasMainClassDefinition = buildGradle.contains("mainClass = 'testProject.Main'");
-        assertTrue(isApplication);
-        assertTrue(hasCSTDependency);
-        assertTrue(hasMainClassDefinition);
+        assertThat(buildGradle)
+                .contains("id 'application'")
+                .contains("maven { url 'https://jitpack.io' }")
+                .contains("implementation 'com.github.CST-Group:cst:1.4.1'")
+                .contains("mainClass = 'testProject.Main'");
     }
 
     @Test
     public void testCSTVersionOption() throws IOException {
         initBasicTestProject("--cst-version", "1.4.0");
         originalOut.println(out.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         List<String> expectedPaths = Arrays.asList(
                 "/src/main/java/testProject/Main.java",
@@ -307,8 +305,7 @@ public class CSTInitTest {
         assertPathsExists(expectedPaths);
 
         String gradleSettings = readFileFromTmpDir("/build.gradle");
-        boolean isPresent = gradleSettings.contains("com.github.CST-Group:cst:1.4.0");
-        assertTrue(isPresent);
+        assertThat(gradleSettings).contains("com.github.CST-Group:cst:1.4.0");
     }
 
     @Test
@@ -327,16 +324,16 @@ public class CSTInitTest {
         }
 
         initBasicTestProject("--overwrite");
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
         String modifiedFile = readFileFromTmpDir("src/main/java/testProject/Main.java");
-        assertNotEquals(mockText, modifiedFile);
+        assertThat(modifiedFile).isNotEqualTo(mockText);
     }
 
     @Test
     public void testOverwriteOverAgentMind() throws IOException {
         File configFile = createMockYAMLFile();
         exitCode = new CommandLine(new Main()).execute("init", "--file", configFile.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
 
         // Create a new mock YAML config file
@@ -382,7 +379,7 @@ public class CSTInitTest {
         }
 
         exitCode = new CommandLine(new Main()).execute("init", "--overwrite", "--file", newConfigFile.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         String expectedAgentMind = """
                 package my.project;
@@ -440,7 +437,7 @@ public class CSTInitTest {
                     }
                 }""";
 
-        assertEquals(expectedAgentMind, readFileFromTmpDir("src/main/java/my/project/AgentMind.java"));
+        assertThat(readFileFromTmpDir("src/main/java/my/project/AgentMind.java")).isEqualTo(expectedAgentMind);
 
         List<String> expectedPaths = Arrays.asList(
                 "/src/main/java/my/project/Main.java",
@@ -488,7 +485,7 @@ public class CSTInitTest {
         }
 
         exitCode = new CommandLine(new Main()).execute("init", "--overwrite", "--file", configFile.toString());
-        assertNotEquals(0, exitCode);
+        assertThat(exitCode).isNotEqualTo(0);
     }
 
     @Test
@@ -528,10 +525,9 @@ public class CSTInitTest {
 
         exitCode = new CommandLine(new Main()).execute("init", "--overwrite", "--file", configFile.toString());
         originalOut.println(out.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         assertPathsExists(Arrays.asList("/src/main/java/my/project/codelets/TestCodelet.java"));
-
     }
 
 }

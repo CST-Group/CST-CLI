@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CSTSaveTest {
@@ -105,32 +106,32 @@ public class CSTSaveTest {
     public void testSavePrintOuput(){
         File configFile = createMockYAMLFile();
         exitCode = new CommandLine(new Main()).execute("init", "--file", configFile.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         exitCode = new CommandLine(new Main()).execute("save");
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
         AgentConfig newAgentConfig = yamlParser.load(out.toString());
         AgentConfig originalAgentConfig = yamlParser.load(yamlConfig);
 
-        assertEquals(originalAgentConfig.toString(), newAgentConfig.toString());
+        assertThat(newAgentConfig).usingRecursiveComparison().isEqualTo(originalAgentConfig);
     }
 
     @Test
     public void testSaveToFile() throws IOException {
         File configFile = createMockYAMLFile();
         exitCode = new CommandLine(new Main()).execute("init", "--file", configFile.toString());
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         String savedConfigFile = "newConfig.yaml";
         exitCode = new CommandLine(new Main()).execute("save", "--out", tempDir + "/" + savedConfigFile);
-        assertEquals(0, exitCode);
+        assertThat(exitCode).isEqualTo(0);
 
         Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
         AgentConfig newAgentConfig = yamlParser.load(readFileFromTmpDir(savedConfigFile));
         AgentConfig originalAgentConfig = yamlParser.load(yamlConfig);
 
-        assertEquals(originalAgentConfig.toString(), newAgentConfig.toString());
+        assertThat(newAgentConfig).usingRecursiveComparison().isEqualTo(originalAgentConfig);
     }
 }

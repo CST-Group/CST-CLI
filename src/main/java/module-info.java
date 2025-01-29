@@ -8,5 +8,5 @@ module br.unicamp.cst.cli {
     exports br.unicamp.cst.cli;
     opens br.unicamp.cst.cli to info.picocli;
     opens br.unicamp.cst.cli.commands to info.picocli;
-    opens br.unicamp.cst.cli.data to org.yaml.snakeyaml;
+    opens br.unicamp.cst.cli.data to org.yaml.snakeyaml, org.assertj.core;
 }

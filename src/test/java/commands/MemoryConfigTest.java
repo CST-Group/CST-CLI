@@ -6,6 +6,7 @@ import org.yaml.snakeyaml.error.YAMLException;
 
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MemoryConfigTest {
@@ -18,10 +19,10 @@ public class MemoryConfigTest {
         testObj.setGroup("TestGroup");
         testObj.setContent(Map.of("int", 1));
 
-        assertEquals("TestObj", testObj.getName());
-        assertEquals("object", testObj.getType());
-        assertEquals("TestGroup", testObj.getGroup());
-        assertEquals(Map.of("int", 1), testObj.getContent());
+        assertThat(testObj.getName()).isEqualTo("TestObj");
+        assertThat(testObj.getType()).isEqualTo("object");
+        assertThat(testObj.getGroup()).isEqualTo("TestGroup");
+        assertThat(testObj.getContent()).containsExactly(entry("int", 1));
     }
 
     @Test
@@ -30,25 +31,25 @@ public class MemoryConfigTest {
 
         //Correct assignments
         testObj.setContent(Map.of("int", 1));
-        assertEquals(Map.of("int", 1), testObj.getContent());
+        assertThat(testObj.getContent()).containsExactly(entry("int", 1));
         testObj.setContent(Map.of("double", 1));
-        assertEquals(Map.of("double", 1), testObj.getContent());
+        assertThat(testObj.getContent()).containsExactly(entry("double", 1));
         testObj.setContent(Map.of("String", 1));
-        assertEquals(Map.of("String", 1), testObj.getContent());
+        assertThat(testObj.getContent()).containsExactly(entry("String", 1));
         testObj.setContent(Map.of("char", 'a'));
-        assertEquals(Map.of("char", 'a'), testObj.getContent());
+        assertThat(testObj.getContent()).containsExactly(entry("char", 'a'));
         testObj.setContent(Map.of("float", 1));
-        assertEquals(Map.of("float", 1), testObj.getContent());
+        assertThat(testObj.getContent()).containsExactly(entry("float", 1));
 
         //Not a basic type
-        assertThrows(YAMLException.class, () -> testObj.setContent(Map.of("List",1)));
+        assertThatThrownBy(() -> testObj.setContent(Map.of("List",1))).isInstanceOf(YAMLException.class);
 
         //More than one content
-        assertThrows(YAMLException.class, () -> testObj.setContent(Map.of("int",1, "float", 2)));
+        assertThatThrownBy(() -> testObj.setContent(Map.of("int",1, "float", 2))).isInstanceOf(YAMLException.class);
 
         //Null content
         testObj.setContent(null);
-        assertNull(testObj.getContent());
+        assertThat(testObj.getContent()).isNull();
     }
 
     @Test
@@ -57,18 +58,18 @@ public class MemoryConfigTest {
 
         //Correct assignments
         testObj.setType("object");
-        assertEquals("object", testObj.getType());
+        assertThat(testObj.getType()).isEqualTo("object");
         testObj.setType("oBjEcT");
-        assertEquals("object", testObj.getType());
+        assertThat(testObj.getType()).isEqualTo("object");
         testObj.setType("container");
-        assertEquals("container", testObj.getType());
+        assertThat(testObj.getType()).isEqualTo("container");
         testObj.setType("CoNtAiNeR");
-        assertEquals("container", testObj.getType());
+        assertThat(testObj.getType()).isEqualTo("container");
 
         //Not valid type
-        assertThrows(YAMLException.class, () -> testObj.setType("List"));
+        assertThatThrownBy(() -> testObj.setType("List")).isInstanceOf(YAMLException.class);
 
         //Null type
-        assertThrows(YAMLException.class, () -> testObj.setType(null));
+        assertThatThrownBy(() -> testObj.setType(null)).isInstanceOf(YAMLException.class);
     }
 }
