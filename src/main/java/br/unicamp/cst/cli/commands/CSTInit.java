@@ -27,7 +27,7 @@ import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
-@Command(name = "init", description = "Initialize a new CST project")
+@Command(name = "init", description = "Initialize a new CST project", mixinStandardHelpOptions = true)
 public class CSTInit implements Callable<Integer> {
     public static String TAB = "    ";
 
@@ -85,6 +85,7 @@ public class CSTInit implements Callable<Integer> {
         if (rootFolder == null) {
             rootFolder = Path.of(System.getProperty("user.dir"));
         }
+        //TODO: Check if rootFolder exists and create it if needed
         File[] existingFiles = new File(rootFolder.toUri()).listFiles();
         if (!(existingFiles.length == 0) && !Arrays.stream(existingFiles).allMatch(e -> e.toString().contains(".yaml"))) {
             CommandLine.Model.OptionSpec overwriteOpt = spec.findOption("--overwrite");
