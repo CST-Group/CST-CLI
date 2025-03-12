@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.util.concurrent.Callable;
 
-@Command(name = "save", description = "Save current project as YAML template")
+@Command(name = "save", description = "Save current project as YAML template", mixinStandardHelpOptions = true)
 public class CSTSave implements Callable<Integer> {
 
     @Option(names = {"--out", "-o"}, description = "Output file to write YAML template")

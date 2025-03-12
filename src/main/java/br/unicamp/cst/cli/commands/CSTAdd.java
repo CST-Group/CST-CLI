@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 import static br.unicamp.cst.cli.data.MemoryConfig.*;
 
-@Command(name = "add", description = "Adds a new codelet to the project structure")
+@Command(name = "add", description = "Adds a new codelet to the project structure", mixinStandardHelpOptions = true)
 public class CSTAdd implements Callable<Integer> {
 
     Scanner input = new Scanner(System.in);
