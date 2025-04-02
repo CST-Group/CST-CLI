@@ -1,8 +1,28 @@
 package br.unicamp.cst.cli.util;
 
+import br.unicamp.cst.cli.data.AgentConfig;
+
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class CodeUtils {
+
+    public static String getCurrentAgentMindCode(Path rootFolder, AgentConfig currAgentConfig) throws IOException {
+        File path = new File(rootFolder + "/src/main/java/" + currAgentConfig.getPackageName().replace(".", "/") + "/AgentMind.java");
+        //Base version of code to compare with original (may contain comments and auxiliary functions)
+        //and with the modified version of project.
+        String currAgentCode = "";
+        if (path.exists()){
+            currAgentCode = String.join("\n", Files.readAllLines(path.toPath()));
+        }
+        return currAgentCode;
+    }
+
+    public static String generateMergedCode(AgentConfig base, AgentConfig modified, String current){
+        return mergeCodes(base.generateCode(), modified.generateCode(), current);
+    }
 
     public static String mergeCodes(String base, String modified, String current){
         String[] commonBase = base.split("\n");

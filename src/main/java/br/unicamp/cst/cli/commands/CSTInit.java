@@ -265,10 +265,8 @@ public class CSTInit implements Callable<Integer> {
         path.mkdirs();
         String agentMindCode = agentConfig.generateCode();
         if (!overwrite && currAgentConfig.getPackageName() != null) {
-            String baseCode = currAgentConfig.generateCode();
-            String modifiedCode = currAgentConfig.mergeWith(agentConfig).generateCode();
             String fullCurrentCode = String.join("\n", Files.readAllLines(path.toPath()));
-            agentMindCode = CodeUtils.mergeCodes(baseCode, modifiedCode, fullCurrentCode);
+            agentMindCode = CodeUtils.generateMergedCode(currAgentConfig, agentConfig, fullCurrentCode);
         }
         FileWriter writer = new FileWriter(path + "/AgentMind.java");
         writer.write(agentMindCode);

@@ -61,8 +61,10 @@ public class ConfigParser {
             agentMindFile = new File(srcFolder, "AgentMind.java");
         }
 
-        if (!agentMindFile.exists())
+        if (!agentMindFile.exists()) {
+            System.out.println("WARNING: No AgentMind.java file found. Considering as empty.");
             return new AgentConfig();
+        }
 
         ConstructorDeclaration agentConstructor = null;
         String packageName = null;

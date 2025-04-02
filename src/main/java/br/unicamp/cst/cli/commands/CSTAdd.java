@@ -1,8 +1,10 @@
 package br.unicamp.cst.cli.commands;
 
+import br.unicamp.cst.cli.Main;
 import br.unicamp.cst.cli.data.*;
 import br.unicamp.cst.cli.util.CodeUtils;
 import com.github.javaparser.ParseProblemException;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
@@ -17,8 +19,11 @@ import java.util.stream.Collectors;
 
 import static br.unicamp.cst.cli.data.MemoryConfig.*;
 
-@Command(name = "add", description = "Adds a new codelet to the project structure", mixinStandardHelpOptions = true)
-public class CSTAdd implements Callable<Integer> {
+@Command(name = "add",
+        description = "Adds a new codelet to the project structure",
+        mixinStandardHelpOptions = true
+        )
+public class CSTAdd {
 
     Scanner input = new Scanner(System.in);
     AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
@@ -27,11 +32,35 @@ public class CSTAdd implements Callable<Integer> {
 
     Path rootFolder;
 
-    @Override
-    public Integer call() throws Exception {
+    @CommandLine.Spec
+    CommandLine.Model.CommandSpec spec;
+
+    @Command(name = "codelet", description = "Add a codelet to current project", mixinStandardHelpOptions = true)
+    private int createCodelet(){
         if (findRootFolder()) {
-            selectMenu();
-            applyChanges();
+            processCreateCodelet();
+            try {
+                applyChanges();
+            } catch (IOException e) {
+                //TODO: Should I handle this exception in applyChanges()??
+                return 1;
+            }
+            return 0;
+        }else {
+            return 1;
+        }
+    }
+
+    @Command(name = "memory", description = "Add a memory to current project", mixinStandardHelpOptions = true)
+    private int createMemory(){
+        if (findRootFolder()) {
+            processCreateMemory();
+            try {
+                applyChanges();
+            } catch (IOException e) {
+                //TODO: Should I handle this exception in applyChanges()??
+                return 1;
+            }
             return 0;
         }else {
             return 1;
@@ -53,34 +82,6 @@ public class CSTAdd implements Callable<Integer> {
         } else {
             rootFolder = currDir.toPath();
             return true;
-        }
-    }
-
-    private void selectMenu() throws IOException {
-        //Build string with options and display it
-        System.out.println("Select element to add:");
-        System.out.println("    (1) Codelet");
-        System.out.println("    (2) Memory Element");
-        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 1): |@ "));
-
-        //Read selected input
-        int selected = Integer.parseInt(input.nextLine());
-
-        //Process command
-        switch (selected) {
-            case 2:
-                processCreateMemory();
-                break;
-            case 1:
-            default:
-                processCreateCodelet();
-                break;
-        }
-        //Re-execute if selected
-        System.out.print(Ansi.AUTO.string("Would you like to add another element? [y/@|bold,blue n|@]: "));
-        String ans = input.nextLine();
-        if (ans.equalsIgnoreCase("y")){
-            selectMenu();
         }
     }
 
