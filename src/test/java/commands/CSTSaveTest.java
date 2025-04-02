@@ -36,7 +36,7 @@ public class CSTSaveTest {
     final ByteArrayOutputStream err = new ByteArrayOutputStream();
     final InputStream in = new ByteArrayInputStream(new byte[0]);
 
-    String yamlConfig = """
+    final String YAML_CONFIG = """
                 projectName: MyProject
                 packageName: my.project
                 codelets:
@@ -94,7 +94,7 @@ public class CSTSaveTest {
         File configFile = new File(tempDir.toString(), "test_config.yaml");
         try {
             FileWriter writer = new FileWriter(configFile);
-            writer.write(yamlConfig);
+            writer.write(YAML_CONFIG);
             writer.close();
         } catch (IOException e) {
             fail("Failed to create mock config file");
@@ -113,7 +113,7 @@ public class CSTSaveTest {
 
         Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
         AgentConfig newAgentConfig = yamlParser.load(out.toString());
-        AgentConfig originalAgentConfig = yamlParser.load(yamlConfig);
+        AgentConfig originalAgentConfig = yamlParser.load(YAML_CONFIG);
 
         assertThat(newAgentConfig).usingRecursiveComparison().isEqualTo(originalAgentConfig);
     }
@@ -130,7 +130,7 @@ public class CSTSaveTest {
 
         Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
         AgentConfig newAgentConfig = yamlParser.load(readFileFromTmpDir(savedConfigFile));
-        AgentConfig originalAgentConfig = yamlParser.load(yamlConfig);
+        AgentConfig originalAgentConfig = yamlParser.load(YAML_CONFIG);
 
         assertThat(newAgentConfig).usingRecursiveComparison().isEqualTo(originalAgentConfig);
     }
