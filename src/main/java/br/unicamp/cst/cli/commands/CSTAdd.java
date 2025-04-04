@@ -54,9 +54,9 @@ public class CSTAdd {
     }
 
     @Command(name = "memory", description = "Add a memory to current project", mixinStandardHelpOptions = true)
-    private int createMemory(){
+    private int createMemory(@Option(names = {"--editor", "-e"}) boolean openEditor){
         if (findRootFolder()) {
-            processCreateMemory();
+            processCreateMemory(openEditor);
             try {
                 applyChanges();
             } catch (IOException e) {
@@ -125,24 +125,13 @@ public class CSTAdd {
         CodeletConfig newCodelet;
         if (openEditor){
             try {
-                File edit = new File(rootFolder + "/.cst", "CODELET");
-                edit.getParentFile().mkdirs();
-                edit.createNewFile();
-                FileWriter writer = new FileWriter(edit);
-                writer.write("""
-                                name:               #Codelet name (required)
-                                group:               #Codelet group
-                                in: []               #Input memories
-                                out: []              #Output memories
-                                broadcast: []        #Broadcast memories""");
-                writer.close();
-
-                ProcessBuilder editor = new ProcessBuilder(
-                        System.getenv().getOrDefault("EDITOR", "nano"), edit.getAbsolutePath());
-                Process editorPrs = null;
-                editorPrs = editor.inheritIO().start();
-                editorPrs.waitFor();
-                String newCodeletConfig = Files.lines(edit.toPath()).collect(Collectors.joining("\n"));
+                String template = """
+                        name:             #Codelet name (required)
+                        group:            #Codelet group
+                        in: []            #Input memories
+                        out: []           #Output memories
+                        broadcast: []     #Broadcast memories""";
+                String newCodeletConfig = getConfigStringFromEditor("CODELET", template);
                 Yaml parser = new Yaml(new Constructor(CodeletConfig.class, new LoaderOptions()));
                 newCodelet = parser.load(newCodeletConfig);
 
@@ -215,7 +204,9 @@ public class CSTAdd {
             System.out.print(Ansi.AUTO.string("Would you like to add this memories? [@|bold,blue Y|@/n]: "));
             String ans = input.nextLine();
             if (!ans.equalsIgnoreCase("n")) {
-                codeletsMemories.forEach(this::createMemoryConfig);
+                for (String codeletsMemory : codeletsMemories) {
+                    createMemoryConfig(openEditor, codeletsMemory);
+                }
             }
         }
 
@@ -223,51 +214,92 @@ public class CSTAdd {
         newCodelets.add(newCodelet);
     }
 
-    private void processCreateMemory(){
-        //Ask memory name
-        System.out.print("Memory Name: ");
-        String memoryName = input.nextLine();
-        while (memoryName.isBlank()) {
-            System.out.println(Ansi.AUTO.string("@|red Memory name cannot be empty|@"));
-            System.out.print("Memory Name: ");
-            memoryName = input.nextLine();
-        }
+    private String getConfigStringFromEditor(String fileName, String fileTemplate) throws IOException, InterruptedException {
+        File edit = new File(rootFolder + "/.cst", fileName);
+        edit.getParentFile().mkdirs();
+        edit.createNewFile();
+        FileWriter writer = new FileWriter(edit);
+        writer.write(fileTemplate);
+        writer.close();
 
-        createMemoryConfig(memoryName);
+        ProcessBuilder editor = new ProcessBuilder(
+                System.getenv().getOrDefault("EDITOR", "nano"), edit.getAbsolutePath());
+        Process editorPrs = null;
+        editorPrs = editor.inheritIO().start();
+        editorPrs.waitFor();
+        String config = Files.lines(edit.toPath()).collect(Collectors.joining("\n"));
+        return config;
     }
 
-    private void createMemoryConfig(String memoryName){
-        //Ask memory type
-        System.out.println("\nSelect memory type for " + memoryName + ":");
-        System.out.println("    (1) Memory Object");
-        System.out.println("    (2) Memory Container");
-        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 1): |@"));
-        int memTypeIdx = Integer.parseInt(input.nextLine());
-        String memoryType = memTypeIdx == 2 ? CONTAINER_TYPE : OBJECT_TYPE;
-
-        //Ask memory group
-        Object[] groups = modifiedConfig.getMemories().stream()
-                .map(MemoryConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
-        System.out.println("\nSelect a memory group to add to:");
-        System.out.println("    (0) NONE");
-        System.out.println("    (1) Add new Group");
-        for (int i = 0; i < groups.length; i++) {
-            System.out.println("    (" + (i+2) + ") " + groups[i]);
+    private void processCreateMemory(boolean openEditor){
+        String memoryName = "";
+        if (!openEditor){
+            //Ask memory name
+            System.out.print("Memory Name: ");
+            memoryName = input.nextLine();
+            while (memoryName.isBlank()) {
+                System.out.println(Ansi.AUTO.string("@|red Memory name cannot be empty|@"));
+                System.out.print("Memory Name: ");
+                memoryName = input.nextLine();
+            }
         }
-        System.out.print(Ansi.AUTO.string("@|bold Select an option (default 0) [0.." + (groups.length + 1) + "]: |@"));
-        int groupIdx = Integer.parseInt(input.nextLine());
-        String memoryGroup = null;
-        if (groupIdx == 1){
-            System.out.print("Enter new Group name: ");
-            memoryGroup = input.nextLine();
+
+        createMemoryConfig(openEditor, memoryName);
+    }
+
+    private void createMemoryConfig(boolean openEditor, String memoryName){
+        MemoryConfig newMemory = null;
+
+        if (openEditor){
+            String tab = " ".repeat(memoryName.length());
+            String template = """
+                    name: %s     # Name for new memory [REQUIRED]
+                    type:   %s   # Type of memory (object | container) [REQUIRED]
+                    group:  %s   # Group for new memory
+                    content:%s   # A single element passed as a map of <type>: <value>
+                            %s   # ex:  content:
+                            %s   #        int: 42""";
+            template = String.format(template, memoryName, tab, tab, tab, tab, tab);
+            try {
+                String newMemoryConfig = getConfigStringFromEditor("MEMORY", template);
+                Yaml parser = new Yaml(new Constructor(MemoryConfig.class, new LoaderOptions()));
+                newMemory = parser.load(newMemoryConfig);
+            } catch (IOException | InterruptedException e) {
+                // TODO
+                throw new RuntimeException(e);
+            }
+        } else {
+            //Ask memory type
+            System.out.println("\nSelect memory type for " + memoryName + ":");
+            System.out.println("    (1) Memory Object");
+            System.out.println("    (2) Memory Container");
+            System.out.print(Ansi.AUTO.string("@|bold Select an option (default 1): |@"));
+            int memTypeIdx = Integer.parseInt(input.nextLine());
+            String memoryType = memTypeIdx == 2 ? CONTAINER_TYPE : OBJECT_TYPE;
+
+            //Ask memory group
+            Object[] groups = modifiedConfig.getMemories().stream()
+                    .map(MemoryConfig::getGroup).distinct().filter(Objects::nonNull).toArray();
+            System.out.println("\nSelect a memory group to add to:");
+            System.out.println("    (0) NONE");
+            System.out.println("    (1) Add new Group");
+            for (int i = 0; i < groups.length; i++) {
+                System.out.println("    (" + (i + 2) + ") " + groups[i]);
+            }
+            System.out.print(Ansi.AUTO.string("@|bold Select an option (default 0) [0.." + (groups.length + 1) + "]: |@"));
+            int groupIdx = Integer.parseInt(input.nextLine());
+            String memoryGroup = null;
+            if (groupIdx == 1) {
+                System.out.print("Enter new Group name: ");
+                memoryGroup = input.nextLine();
+            }
+            if (1 < groupIdx && groupIdx <= groups.length + 1)
+                memoryGroup = (String) groups[groupIdx - 2];
+            newMemory = new MemoryConfig(memoryName);
+            newMemory.setGroup(memoryGroup);
+            newMemory.setType(memoryType);
         }
-        if (1 < groupIdx && groupIdx <= groups.length + 1)
-            memoryGroup = (String) groups[groupIdx-2];
 
-        MemoryConfig newMemoryConfig = new MemoryConfig(memoryName);
-        newMemoryConfig.setGroup(memoryGroup);
-        newMemoryConfig.setType(memoryType);
-
-        modifiedConfig.addMemoryConfig(newMemoryConfig);
+        if (newMemory != null) modifiedConfig.addMemoryConfig(newMemory);
     }
 }

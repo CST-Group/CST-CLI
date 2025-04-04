@@ -62,7 +62,7 @@ public class ConfigParser {
         }
 
         if (!agentMindFile.exists()) {
-            System.out.println("WARNING: No AgentMind.java file found. Considering as empty.");
+            //System.out.println("WARNING: No AgentMind.java file found. Considering as empty.");
             return new AgentConfig();
         }
 
