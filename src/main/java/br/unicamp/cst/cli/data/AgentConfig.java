@@ -10,7 +10,6 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 
 import java.util.*;
-import java.util.function.Predicate;
 
 import static br.unicamp.cst.cli.data.MemoryConfig.CONTAINER_TYPE;
 import static br.unicamp.cst.cli.data.MemoryConfig.OBJECT_TYPE;
