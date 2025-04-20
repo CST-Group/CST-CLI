@@ -12,13 +12,12 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Ansi;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+
 
 @Command(name = "update",
     description = "Updates current project by applying differences found on a new YAML file",
@@ -30,8 +29,11 @@ public class CSTUpdate implements Callable<Integer> {
     AgentConfig agentConfig;
     AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
 
-    @CommandLine.Option(names = {"-f", "--file"}, description = "Config file for project creation", required = true)
+    @CommandLine.Option(names = {"-f", "--file"}, description = "Config file for project creation")
     File config;
+
+    @CommandLine.Option(names = {"--editor", "-e"}, description = "Open current config into default editor for modification")
+    boolean openEditor;
 
     @Override
     public Integer call(){
@@ -78,12 +80,20 @@ public class CSTUpdate implements Callable<Integer> {
             }
         }
         if (configInfo.isBlank()) {
-            System.out.println(Ansi.AUTO.string("@|bold,red WARNIG: |@ Config file is empty. No changes applied."));
-            return false;
-        } else {
-            Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
-            agentConfig = yamlParser.load(configInfo);
+            try {
+                configInfo = CodeUtils.getConfigStringFromEditor(rootFolder, "UPDATE", currAgentConfig.toYaml());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            //System.out.println(Ansi.AUTO.string("@|bold,red WARNIG: |@ Config file is empty. No changes applied."));
+            //return false;
         }
+
+        Yaml yamlParser = new Yaml(new Constructor(AgentConfig.class, new LoaderOptions()));
+        agentConfig = yamlParser.load(configInfo);
+
         return true;
     }
 

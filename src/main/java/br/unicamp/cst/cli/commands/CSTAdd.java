@@ -6,6 +6,7 @@ import com.github.javaparser.ParseProblemException;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.error.YAMLException;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -28,6 +29,7 @@ import static br.unicamp.cst.cli.data.MemoryConfig.*;
 public class CSTAdd {
 
     Scanner input = new Scanner(System.in);
+    //TODO: Can throw ParseProblemException
     AgentConfig currAgentConfig = ConfigParser.parseProjectToConfig();
     AgentConfig modifiedConfig = ConfigParser.parseProjectToConfig();
     List<CodeletConfig> newCodelets = new ArrayList<>();
@@ -40,7 +42,7 @@ public class CSTAdd {
     @Command(name = "codelet", description = "Add a codelet to current project", mixinStandardHelpOptions = true)
     private int createCodelet(@Option(names = {"--editor", "-e"}) boolean openEditor){
         if (findRootFolder()) {
-            processCreateCodelet(openEditor);
+            if (!processCreateCodelet(openEditor)) return 1;
             try {
                 applyChanges();
             } catch (IOException e) {
@@ -56,7 +58,7 @@ public class CSTAdd {
     @Command(name = "memory", description = "Add a memory to current project", mixinStandardHelpOptions = true)
     private int createMemory(@Option(names = {"--editor", "-e"}) boolean openEditor){
         if (findRootFolder()) {
-            processCreateMemory(openEditor);
+            if (!processCreateMemory(openEditor)) return 1;
             try {
                 applyChanges();
             } catch (IOException e) {
@@ -121,23 +123,38 @@ public class CSTAdd {
         writer.close();
     }
 
-    private void processCreateCodelet(boolean openEditor){
-        CodeletConfig newCodelet;
+    private boolean processCreateCodelet(boolean openEditor){
+        CodeletConfig newCodelet = null;
+
         if (openEditor){
-            try {
-                String template = """
+            String template = """
                         name:             #Codelet name (required)
                         group:            #Codelet group
                         in: []            #Input memories
                         out: []           #Output memories
                         broadcast: []     #Broadcast memories""";
-                String newCodeletConfig = getConfigStringFromEditor("CODELET", template);
-                Yaml parser = new Yaml(new Constructor(CodeletConfig.class, new LoaderOptions()));
-                newCodelet = parser.load(newCodeletConfig);
-
-            } catch (IOException | InterruptedException e) {
-                //TODO
-                throw new RuntimeException(e);
+            String editingString = template;
+            boolean editing = true;
+            String newCodeletConfig = "";
+            while (editing) {
+                try {
+                    newCodeletConfig = CodeUtils.getConfigStringFromEditor(rootFolder, "CODELET", editingString);
+                } catch (IOException | InterruptedException e){
+                    //TODO
+                    throw new RuntimeException(e);
+                }
+                try {
+                    Yaml parser = new Yaml(new Constructor(CodeletConfig.class, new LoaderOptions()));
+                    newCodelet = parser.load(newCodeletConfig);
+                    editing = false;
+                } catch (YAMLException e) {
+                    System.out.print(Ansi.AUTO.string("Would you like to edit the config? [@|bold Y|@|n]: "));
+                    String ans = input.nextLine();
+                    if (ans.equalsIgnoreCase("n")) {
+                        return false;
+                    }
+                    editingString = newCodeletConfig;
+                }
             }
         } else {
             //Ask codelet name
@@ -192,12 +209,12 @@ public class CSTAdd {
 
         //Check for non-existing memories in AgentMind
         Set<String> existingMemories = modifiedConfig.getMemories().stream().map(MemoryConfig::getName).collect(Collectors.toSet());
-        Set<String> codeletsMemories = new HashSet<>(){{
-            addAll(newCodelet.getIn());
-            addAll(newCodelet.getOut());
-            addAll(newCodelet.getBroadcast());
-            removeIf(existingMemories::contains);
-        }};
+        Set<String> codeletsMemories = new HashSet<>();
+        codeletsMemories.addAll(newCodelet.getIn());
+        codeletsMemories.addAll(newCodelet.getOut());
+        codeletsMemories.addAll(newCodelet.getBroadcast());
+        codeletsMemories.removeIf(existingMemories::contains);
+
         if (!codeletsMemories.isEmpty()) {
             System.out.println("Some of the memories connected to the codelet are not declared in the current project:");
             System.out.println(codeletsMemories);
@@ -212,26 +229,11 @@ public class CSTAdd {
 
         modifiedConfig.addCodeletConfig(newCodelet);
         newCodelets.add(newCodelet);
+        return true;
     }
 
-    private String getConfigStringFromEditor(String fileName, String fileTemplate) throws IOException, InterruptedException {
-        File edit = new File(rootFolder + "/.cst", fileName);
-        edit.getParentFile().mkdirs();
-        edit.createNewFile();
-        FileWriter writer = new FileWriter(edit);
-        writer.write(fileTemplate);
-        writer.close();
 
-        ProcessBuilder editor = new ProcessBuilder(
-                System.getenv().getOrDefault("EDITOR", "nano"), edit.getAbsolutePath());
-        Process editorPrs = null;
-        editorPrs = editor.inheritIO().start();
-        editorPrs.waitFor();
-        String config = Files.lines(edit.toPath()).collect(Collectors.joining("\n"));
-        return config;
-    }
-
-    private void processCreateMemory(boolean openEditor){
+    private boolean processCreateMemory(boolean openEditor){
         String memoryName = "";
         if (!openEditor){
             //Ask memory name
@@ -244,10 +246,10 @@ public class CSTAdd {
             }
         }
 
-        createMemoryConfig(openEditor, memoryName);
+        return createMemoryConfig(openEditor, memoryName);
     }
 
-    private void createMemoryConfig(boolean openEditor, String memoryName){
+    private boolean createMemoryConfig(boolean openEditor, String memoryName){
         MemoryConfig newMemory = null;
 
         if (openEditor){
@@ -260,13 +262,28 @@ public class CSTAdd {
                             %s   # ex:  content:
                             %s   #        int: 42""";
             template = String.format(template, memoryName, tab, tab, tab, tab, tab);
-            try {
-                String newMemoryConfig = getConfigStringFromEditor("MEMORY", template);
-                Yaml parser = new Yaml(new Constructor(MemoryConfig.class, new LoaderOptions()));
-                newMemory = parser.load(newMemoryConfig);
-            } catch (IOException | InterruptedException e) {
-                // TODO
-                throw new RuntimeException(e);
+            boolean editing = true;
+            String editString = template;
+            String newMemoryConfig = "";
+            while (editing) {
+                try {
+                    newMemoryConfig = CodeUtils.getConfigStringFromEditor(rootFolder, "MEMORY", editString);
+                } catch (IOException | InterruptedException e) {
+                    // TODO
+                    throw new RuntimeException(e);
+                }
+                try {
+                    Yaml parser = new Yaml(new Constructor(MemoryConfig.class, new LoaderOptions()));
+                    newMemory = parser.load(newMemoryConfig);
+                    editing = false;
+                } catch (YAMLException e) {
+                    System.out.print(Ansi.AUTO.string("Would you like to edit the config? [@|bold Y|@|n]: "));
+                    String ans = input.nextLine();
+                    if (ans.equalsIgnoreCase("n")) {
+                        return false;
+                    }
+                    editString = newMemoryConfig;
+                }
             }
         } else {
             //Ask memory type
@@ -301,5 +318,7 @@ public class CSTAdd {
         }
 
         if (newMemory != null) modifiedConfig.addMemoryConfig(newMemory);
+        return true;
     }
+
 }

@@ -3,9 +3,11 @@ package br.unicamp.cst.cli.util;
 import br.unicamp.cst.cli.data.AgentConfig;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
 
 public class CodeUtils {
 
@@ -105,5 +107,30 @@ public class CodeUtils {
         }
 
         return mergedCode.toString();
+    }
+
+    public static String getConfigStringFromEditor(Path rootFolder, String fileName, String fileTemplate) throws IOException, InterruptedException {
+        File edit = new File(rootFolder + "/.cst", fileName);
+        edit.getParentFile().mkdirs();
+        edit.createNewFile();
+        FileWriter writer = new FileWriter(edit);
+        writer.write(fileTemplate);
+        writer.close();
+
+        ProcessBuilder editor = new ProcessBuilder(
+                System.getenv().getOrDefault("EDITOR", "nano"), edit.getAbsolutePath());
+        Process editorPrs = null;
+        editorPrs = editor.inheritIO().start();
+        editorPrs.waitFor();
+        //TODO: What if file is not saved??
+        String config = Files.lines(edit.toPath()).collect(Collectors.joining("\n"));
+        return config;
+    }
+
+    public static boolean isValidName(String name) {
+        if (name == null){
+            return false;
+        }
+        return !name.isBlank() && !name.contains(" ") && Character.isAlphabetic(name.charAt(0));
     }
 }

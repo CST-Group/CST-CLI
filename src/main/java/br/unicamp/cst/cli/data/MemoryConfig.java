@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static br.unicamp.cst.cli.util.CodeUtils.isValidName;
+
 
 public class MemoryConfig {
     public static final String OBJECT_TYPE = "object";
@@ -19,7 +21,12 @@ public class MemoryConfig {
     public MemoryConfig(){}
 
     public MemoryConfig(String name){
-        this.setName(name);
+        if (!isValidName(name)){
+            System.err.println("MEMORY[" + name + "]: Invalid memory name. Name should be a valid Java identifier.");
+            throw new YAMLException("MEMORY[" + name + "]: Invalid memory name. Name should be a valid Java identifier.");
+        } else {
+            this.setName(name);
+        }
     }
 
     public String getName() {
@@ -27,7 +34,12 @@ public class MemoryConfig {
     }
 
     public void setName(String name) {
-        this.name = name;
+        if (!isValidName(name)){
+            System.err.println("MEMORY[" + name + "]: Invalid memory name. Name should be a valid Java identifier.");
+            throw new YAMLException("MEMORY[" + name + "]: Invalid memory name. Name should be a valid Java identifier.");
+        } else {
+            this.name = name;
+        }
     }
 
     public String getType() {

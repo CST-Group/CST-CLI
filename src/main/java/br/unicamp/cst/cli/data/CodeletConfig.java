@@ -10,12 +10,14 @@ import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.observer.PropagatingAstObserver;
 import com.github.javaparser.ast.stmt.BlockStmt;
+import org.yaml.snakeyaml.error.YAMLException;
 
 import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.List;
 
 import static br.unicamp.cst.cli.commands.CSTInit.TAB;
+import static br.unicamp.cst.cli.util.CodeUtils.isValidName;
 
 public class CodeletConfig {
     private String name;
@@ -35,7 +37,12 @@ public class CodeletConfig {
     }
 
     public void setName(String name) {
-        this.name = name;
+        if (!isValidName(name)){
+            System.err.println("MEMORY[" + name + "]: Invalid codelet name. Name should be a valid Java identifier.");
+            throw new YAMLException("MEMORY[" + name + "]: Invalid codelet name. Name should be a valid Java identifier.");
+        } else {
+            this.name = name;
+        }
     }
 
     public String getGroup() {
